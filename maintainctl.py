@@ -6,7 +6,7 @@
 # @Software: PyCharm
 
 from configparser import ConfigParser
-from pubfile import modify_print, generate_and_write, helper_print
+from stockclib.omServ import modify_print, generate_and_write, helper_print
 import pymongo
 import re
 
@@ -23,6 +23,7 @@ generateuser = re.compile("gen -m \d{1,8}")
 checkusers = re.compile("check -a")
 exitctl = re.compile("exit")
 helper = re.compile("help")
+# deleteuser = re.compile("delete -id")
 
 if __name__ == "__main__":
     connection = pymongo.MongoClient(cfg.get(DB_SECTION, 'address'), int(cfg.get(DB_SECTION, 'port')))

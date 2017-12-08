@@ -6,16 +6,17 @@
 # @Software: PyCharm
 
 from tradeserver import app
-from flask import render_template, request, json, jsonify, session, abort
+from flask import request, jsonify, abort
 from configparser import ConfigParser
-from pubfile import json_to_dict, token_certify, check_orders, mongo_auth_assistant
-import pymongo
+from stockclib.omServ import json_to_dict, token_certify, check_orders, \
+    mongo_auth_assistant, clean_order, real_time_profit_statistics
 
 # --------------------------------------
 # Load config.ini and read configuration
 CONFIG_FILE = 'config.ini'
 DB_SECTION = 'DB'
 TRADE_SECTION = 'Trade'
+COLL_SECTION = 'Collections'
 cfg = ConfigParser()
 cfg.read(CONFIG_FILE)
 
@@ -27,21 +28,13 @@ connection = mongo_auth_assistant(cfg.get(DB_SECTION, 'address'),
                                   cfg.get(DB_SECTION, 'user'),
                                   cfg.get(DB_SECTION, 'passwd'),
                                   cfg.get(DB_SECTION, 'database'))
-#connection = pymongo.MongoClient(cfg.get(DB_SECTION, 'address'), int(cfg.get(DB_SECTION, 'port')))
-#if connection.admin.authenticate(
-#    cfg.get(DB_SECTION, 'user'),
-#    cfg.get(DB_SECTION, 'passwd'),
-#    mechanism='SCRAM-SHA-1',
-#    source=cfg.get(DB_SECTION, 'database')):
-#    pass
-#else:
-#    raise Exception('Error configure on user or password! ')
 sysdatabase = connection[cfg.get(DB_SECTION, 'database')]
-collect_traders = sysdatabase['traders']
-collect_orders = sysdatabase['orders']
-# collect_transaction_history = database['trans_history']
-# collect_transaction_full_history = database['full_history']
-# collect_position = database['position']
+collect_traders = sysdatabase[cfg.get(COLL_SECTION, 'traders_coll')]
+collect_orders = sysdatabase[cfg.get(COLL_SECTION, 'orders_coll')]
+collect_full_history = sysdatabase[cfg.get(COLL_SECTION, 'full_history_coll')]
+collect_positions = sysdatabase[cfg.get(COLL_SECTION, 'positions_coll')]
+collect_trans_history = sysdatabase[cfg.get(COLL_SECTION, 'trans_history_coll')]
+collect_profitstat = sysdatabase[cfg.get(COLL_SECTION, 'profitstat_coll')]
 
 
 # ---------------------------------
@@ -65,6 +58,10 @@ def takeorder():
         else:
             # 撤单逻辑
             if 'order_id' in list(jdict.keys()) and jdict['ops'] == 'cancel':
+                order_data = collect_orders.find_one({'order_id': jdict['order_id']})
+                order_after_clean = clean_order(order_data)
+                # 分别写入操作记录和删除被撤订单
+                collect_full_history.insert_one(order_after_clean)
                 delete_obj = collect_orders.delete_one({'order_id': jdict['order_id']})
                 if delete_obj.deleted_count > 0:
                     return jsonify({'status': 'Done', 'msg': 'Order cancel'})
@@ -74,9 +71,11 @@ def takeorder():
             else:
                 # 根据ops进行操作，买入、卖出
                 # 先检查是否能进入撮合系统
+                positions = collect_positions.find_one({'user_id': authentication_result['user_id']})
                 check_result = check_orders(jdict, authentication_result,
                                             float(cfg.get(TRADE_SECTION, 'taxrate')),
-                                            float(cfg.get(TRADE_SECTION, 'feerate')))
+                                            float(cfg.get(TRADE_SECTION, 'feerate')),
+                                            positions)
                 if 'Error' in list(check_result.values()):
                     return jsonify(check_result)
                 else:
@@ -92,6 +91,68 @@ def takeorder():
             for order in order_belong_to_user:
                 order.pop('_id')
             return jsonify({'status': 'Done', 'msg': {'remain_orders': order_belong_to_user}})  # 返回剩余订单
+
+
+@app.route('/users', methods=['POST'])
+def return_user_info():
+    """
+    根据用户的请求返回指定的数据
+    请求：
+    trade_token放在头部
+    请求体： {'query': 'positions/full_history/trans_history/profitstat/user/real_time_profit'}
+    :return:  {'user_id','what you want'}
+    """
+    jdict = json_to_dict(request.data)
+    authentication_result = token_certify(collect_traders, request.headers)
+    if 'Error' in list(authentication_result.values()):
+        return jsonify(authentication_result)
+    else:
+        # 通过认证
+        user_id = authentication_result['user_id']
+        if jdict['query'] == 'positions':
+            query = collect_positions.find_one({'user_id': user_id})
+            if query:
+                query.pop('_id')
+                return jsonify(query)
+            else:
+                return jsonify({'status': 'Error', 'msg': 'No any position'})
+        if jdict['query'] == 'full_history':
+            query = list(collect_full_history.find({'user_id': user_id}))
+            if query:
+                for q in query:
+                    q.pop('_id')
+                    q.pop('user_id')
+                return jsonify({'user_id': user_id, 'full_history': query})
+            else:
+                return jsonify({'status': 'Error', 'msg': 'No any operation history'})
+        if jdict['query'] == 'trans_history':
+            query = collect_trans_history.find_one({'user_id': user_id})
+            if query:
+                query.pop('_id')
+                query['trans_history'] = query['history']
+                query.pop('history')
+                return jsonify(query)
+            else:
+                return jsonify({'status': 'Error', 'msg': 'No any transaction history'})
+        if jdict['query'] == 'profitstat':
+            query = collect_profitstat.find_one({'user_id': user_id})
+            if query:
+                query.pop('_id')
+                return jsonify(query)
+            else:
+                return jsonify({'status': 'Error', 'msg': 'No any profit statistics record'})
+        if jdict['query'] == 'user':
+            query = collect_traders.find_one({'user_id': user_id})
+            if query:
+                query.pop('_id')
+                query.pop('token')
+                return jsonify(query)
+            else:
+                jsonify({'status': 'Error', 'msg': 'You meet a crazy bug'})
+        if jdict['query'] == 'real_time_profit':
+            stat = real_time_profit_statistics(collect_traders, collect_positions)
+            belong_to_user = [st for st in stat if user_id in list(st.values())]
+            return jsonify(belong_to_user)
 
 
 if __name__ == '__main__':
