@@ -7,7 +7,6 @@
 
 from tradeserver.omserver import Server
 from configparser import ConfigParser
-import os
 
 CONFIG_FILE = 'config.ini'
 DB_SECTION = 'DB'
@@ -32,7 +31,4 @@ if __name__ == "__main__":
                float(cfg.get(TRADE_SECTION, 'taxrate')),
                float(cfg.get(TRADE_SECTION, 'feerate')))
     s.start()
-    file = open('omserv_pid', 'w')
-    file.write(str(os.getpid()))
-    file.close()
 

@@ -9,10 +9,11 @@ from multiprocessing import Process
 from multiprocessing.sharedctypes import Array
 from stockclib.omServ import clean_order_for_om, cost_cal_for_om, generate_positions, \
     generate_positions_update, return_for_tran_history, balance_manager, \
-    fetch_profitstat, fetch_others, fetch_signal,compare_when_matching
+    fetch_profitstat, fetch_others, fetch_signal, compare_when_matching
 from datetime import datetime
 from functools import reduce
 import time
+import os
 import tushare
 
 
@@ -253,6 +254,9 @@ class Server(object):
         self.taxR = taxR
 
     def start(self):
+        file = open('omserv_pid', 'w')
+        file.write(str(os.getpid()))
+        file.close()
         print('before', self.status.value)
         checkdb = Process(target=check_status, args=(self.status, self.address,
                                                      self.port, self.username,
