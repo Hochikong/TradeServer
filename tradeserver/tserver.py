@@ -116,7 +116,7 @@ def return_user_info():
                 return jsonify(query)
             else:
                 return jsonify({'status': 'Error', 'msg': 'No any position'})
-        if jdict['query'] == 'full_history':
+        elif jdict['query'] == 'full_history':
             query = list(collect_full_history.find({'user_id': user_id}))
             if query:
                 for q in query:
@@ -125,7 +125,7 @@ def return_user_info():
                 return jsonify({'user_id': user_id, 'full_history': query})
             else:
                 return jsonify({'status': 'Error', 'msg': 'No any operation history'})
-        if jdict['query'] == 'trans_history':
+        elif jdict['query'] == 'trans_history':
             query = collect_trans_history.find_one({'user_id': user_id})
             if query:
                 query.pop('_id')
@@ -134,14 +134,14 @@ def return_user_info():
                 return jsonify(query)
             else:
                 return jsonify({'status': 'Error', 'msg': 'No any transaction history'})
-        if jdict['query'] == 'profitstat':
+        elif jdict['query'] == 'profitstat':
             query = collect_profitstat.find_one({'user_id': user_id})
             if query:
                 query.pop('_id')
                 return jsonify(query)
             else:
                 return jsonify({'status': 'Error', 'msg': 'No any profit statistics record'})
-        if jdict['query'] == 'user':
+        elif jdict['query'] == 'user':
             query = collect_traders.find_one({'user_id': user_id})
             if query:
                 query.pop('_id')
@@ -149,10 +149,12 @@ def return_user_info():
                 return jsonify(query)
             else:
                 jsonify({'status': 'Error', 'msg': 'You meet a crazy bug'})
-        if jdict['query'] == 'real_time_profit':
+        elif jdict['query'] == 'real_time_profit':
             stat = real_time_profit_statistics(collect_traders, collect_positions)
             belong_to_user = [st for st in stat if user_id in list(st.values())]
             return jsonify(belong_to_user)
+        else:
+            return jsonify({'status': 'Error', 'msg': 'Wrong query'})
 
 
 if __name__ == '__main__':
