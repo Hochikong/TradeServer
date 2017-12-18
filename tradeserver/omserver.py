@@ -119,7 +119,7 @@ def check_status(self_status, address, port, username, passwd, target_db, servic
     signal = fetch_signal(address, port, username, passwd, target_db, service_signal)
     while True:
         status = signal.find_one()['status']
-        print('status', status)
+        print('signal status: ', status)
         if bytes.decode(self_status.value) == status:
             pass
         else:
@@ -155,11 +155,12 @@ def matching(self_status, address, port, username, passwd, target_db, order,
                     cursors['coll_orders'].delete_one({'order_id': order_id})
                     time.sleep(2)
                 else:
-                    print('status: waiting for matching')
+                    print('Order status: waiting for matching')
+                    time.sleep(3)
         else:
             # 不处理撮合
             print('status: stop')
-            time.sleep(5)
+            time.sleep(10)
 
 
 def profit_statistics(self_status, address, port, username, passwd, target_db, traders, positions, profitstat):
@@ -257,21 +258,24 @@ class Server(object):
         file = open('omserv_pid', 'w')
         file.write(str(os.getpid()))
         file.close()
-        print('before', self.status.value)
+        print('Staring: ', self.status.value)
         checkdb = Process(target=check_status, args=(self.status, self.address,
                                                      self.port, self.username,
-                                                     self.passwd, self.target_db, self.signal))
+                                                     self.passwd, self.target_db, self.signal),
+                          name='checkdb')
         matchingserv = Process(target=matching, args=(self.status, self.address,
                                                       self.port, self.username,
                                                       self.passwd, self.target_db,
                                                       self.order, self.full_history,
                                                       self.positions, self.trans_history, self.traders,
                                                       self.feeR, self.taxR,
-                                                      ))
+                                                      ),
+                               name='matchingserv')
         profitstatserv = Process(target=profit_statistics, args=(self.status, self.address,
                                                                  self.port, self.username,
                                                                  self.passwd, self.target_db,
-                                                                 self.traders, self.positions, self.profitstat))
+                                                                 self.traders, self.positions, self.profitstat),
+                                 name='profitstatserv')
         checkdb.start()
         matchingserv.start()
         profitstatserv.start()
