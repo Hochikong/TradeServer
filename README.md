@@ -1,6 +1,12 @@
-TradeServer 0.1
+TradeServer 0.2
 =========
 My trade server.
+
+## Change log
+- 0.2：  
+1.撮合服务器将用日志记录服务状态和交易记录，均保存在runtime目录下  
+2.服务器不再管理用户每只股票从建仓到平仓的交易内容并统计收益，而是需要用户获取full_history自行处理   
+3.修复了多用户查询实时收益时混入非自己持仓股票的bug
 
 ## Dependence
 StockClib 0.3
@@ -55,6 +61,6 @@ There are three tools you should use
    - Method: POST
    - Body: {"query":"full_history"}
    
-   query: Specify what return you want to get: positions / full_history / trans_history / profitstat / user / real_time_profit
+   query: Specify what return you want to get: positions / full_history / profitstat / user / real_time_profit
 
 

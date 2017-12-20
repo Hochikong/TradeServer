@@ -8,18 +8,93 @@
 from multiprocessing import Process
 from multiprocessing.sharedctypes import Array
 from stockclib.omServ import clean_order_for_om, cost_cal_for_om, generate_positions, \
-    generate_positions_update, return_for_tran_history, balance_manager, \
+    generate_positions_update, balance_manager, \
     fetch_profitstat, fetch_others, fetch_signal, compare_when_matching
 from datetime import datetime
 from functools import reduce
-import time
 import os
 import tushare
+import logging
+import time
+# import time
+
+# logging configuration
+formatter = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
+
+
+def generate_logger(name, log_file, level=logging.INFO):
+    """
+    通用的日志记录模块，用于不同功能的日志记录工作
+    :param name: logger名
+    :param log_file: 日志文件
+    :param level: 日志级别，默认INFO
+    :return: logger对象
+    """
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+
+    return logger
+
+
+# 用于记录服务运行状态
+service_status_logger = generate_logger('serv_status', 'runtime/status.log', logging.WARNING)
+
+# 用于记录交易撮合
+matching_history_logger = generate_logger('matching_history', 'runtime/match.log', logging.INFO)
 
 
 # 辅助函数
+def parallel_matching(per_order_with_params):
+    """
+    使用map的撮合函数
+    :param per_order_with_params: 每一张订单和对应的游标和费率参数构成的元组:(order, feeR, taxR, cursors)
+    :return:
+    """
+    per_order = per_order_with_params[0]
+    feeR = per_order_with_params[1]
+    taxR = per_order_with_params[2]
+    cursors = per_order_with_params[3]
+
+    compare_result = compare_when_matching(per_order)
+    # print('Waiting for matching: | code: %s, price: %s, ops: %s' % (per_order['code'],
+    # compare_result, per_order['ops']))
+    if compare_result != 'Wait':
+        # 准备写入full_history前的数据清理
+        per_order = clean_order_for_om(per_order, compare_result)
+        # 更新订单的费用和总值
+        per_order = cost_cal_for_om(per_order, feeR, taxR)
+        order_id = per_order['order_id']
+        # 写入操作记录
+        cursors['coll_full_history'].insert_one(per_order)
+        # 写入持仓
+        position_manager(per_order, cursors['coll_positions'])
+        # 修改用户余额
+        balance_manager(cursors['coll_traders'], per_order)
+        # 写入trans_history
+        # transhistory_manager(cursors['coll_trans_history'], result)
+        # 删除订单
+        cursors['coll_orders'].delete_one({'order_id': order_id})
+        # print('status: Done, code: %s, price: %s, ops: %s, user_id: %s' %
+        # (per_order['code'], compare_result, per_order['ops'], per_order['user_id']))
+        # 记录订单完成信息
+        matching_history_logger.info('status: Done, code: %s, price: %s, ops: %s, user_id: %s' %
+                                     (per_order['code'],
+                                      compare_result,
+                                      per_order['ops'],
+                                      per_order['user_id']))
+
 
 def position_manager(per_order, positions):
+    """
+    仓位管理函数
+    :param per_order: 一张订单
+    :param positions: positions集合
+    :return:
+    """
     user_id = per_order['user_id']
     if per_order['ops'] == 'bid':
         data = generate_positions(per_order)
@@ -40,18 +115,18 @@ def position_manager(per_order, positions):
                     user_position[code_index][k] = data_update[k]
                 # 更新数据库
                 positions.update_one({'user_id': user_id}, {'$set': {'position': user_position}})
-                return return_for_tran_history(user_id, per_order, data)
+                # return return_for_trans_history(user_id, per_order, data)
             else:
                 # 非增持的情况
                 user_position.append(data)
                 # 更新用户持仓
                 positions.update_one({'user_id': user_id}, {'$set': {'position': user_position}})
-                return return_for_tran_history(user_id, per_order, data)
+                # return return_for_trans_history(user_id, per_order, data)
         else:
             document = {'user_id': user_id, 'position': [data, ]}
             positions.insert_one(document)
             # 用于写入trans_history
-            return return_for_tran_history(user_id, per_order, data)
+            # return return_for_trans_history(user_id, per_order, data)
     if per_order['ops'] == 'offer':
         query_result = positions.find_one({'user_id': user_id})
         # 此处不再执行用户是否存在的查询，交给REST接口处理
@@ -62,13 +137,19 @@ def position_manager(per_order, positions):
         # 重新写入数据库
         positions.update_one({'user_id': user_id}, {'$set': {'position': position_data}})
         # 更新trans_history
-        return {'end': time.strftime("%Y-%m-%d", time.localtime()),
-                'code': per_order['code'],
-                'user_id': user_id,
-                'current_price': tushare.get_realtime_quotes(per_order['code'])['price'][0]}
+        # return {'end': time.strftime("%Y-%m-%d", time.localtime()),
+        #         'code': per_order['code'],
+        #        'user_id': user_id,
+        #         'current_price': tushare.get_realtime_quotes(per_order['code'])['price'][0]}
 
 
 def transhistory_manager(trans_history, pm_return):
+    """
+    完整交易记录管理（非full_history）
+    :param trans_history: 交易记录表
+    :param pm_return: position_manager返回的数据
+    :return:
+    """
     # 结算更新
     # 卖出结算
     if len(pm_return) == 4:
@@ -119,11 +200,13 @@ def check_status(self_status, address, port, username, passwd, target_db, servic
     signal = fetch_signal(address, port, username, passwd, target_db, service_signal)
     while True:
         status = signal.find_one()['status']
-        print('signal status: ', status)
         if bytes.decode(self_status.value) == status:
             pass
         else:
             self_status.value = str.encode(status)
+            # print('Current signal status: ', status)
+            # 记录服务状态变更
+            service_status_logger.warning('Current status: %s' % status)
         time.sleep(5)
 
 
@@ -134,32 +217,17 @@ def matching(self_status, address, port, username, passwd, target_db, order,
     while True:
         if bytes.decode(self_status.value) == 'run':
             all_orders = list(cursors['coll_orders'].find())
-            for per_order in all_orders:
-                compare_result = compare_when_matching(per_order)
-                print('matching: | code: %s, price: %s, ops: %s' % (per_order['code'], compare_result, per_order['ops']))
-                if compare_result != 'Wait':
-                    # 准备写入full_history前的数据清理
-                    per_order = clean_order_for_om(per_order, compare_result)
-                    # 更新订单的费用和总值
-                    per_order = cost_cal_for_om(per_order, feeR, taxR)
-                    order_id = per_order['order_id']
-                    # 写入操作记录
-                    cursors['coll_full_history'].insert_one(per_order)
-                    # 写入持仓
-                    result = position_manager(per_order, cursors['coll_positions'])
-                    # 修改用户余额
-                    balance_manager(cursors['coll_traders'], per_order)
-                    # 写入trans_history
-                    transhistory_manager(cursors['coll_trans_history'], result)
-                    # 删除订单
-                    cursors['coll_orders'].delete_one({'order_id': order_id})
-                    time.sleep(2)
-                else:
-                    print('Order status: waiting for matching')
-                    time.sleep(3)
+            all_orders_with_params = [(order, feeR, taxR, cursors) for order in all_orders]
+            # st = time.time()
+            r = list(map(parallel_matching, all_orders_with_params))
+            # ed = time.time()
+            # print('Cost', ed-st)
+            time.sleep(6)
         else:
             # 不处理撮合
-            print('status: stop')
+            # print('status: stop')
+            # 记录等待状态
+            matching_history_logger.info('Waiting for orders')
             time.sleep(10)
 
 
@@ -238,7 +306,7 @@ def profit_statistics(self_status, address, port, username, passwd, target_db, t
 class Server(object):
     def __init__(self, address, port, username, passwd, target_db, order, full_history,
                  positions, trans_history, signal, traders, profitstat, feeR, taxR):
-        self.status = Array('c', b'stop')
+        self.status = Array('c', b'halt')
         self.address = address
         self.port = port
         self.username = username
@@ -255,10 +323,12 @@ class Server(object):
         self.taxR = taxR
 
     def start(self):
-        file = open('omserv_pid', 'w')
+        file = open('runtime/omserv_pid', 'w')
         file.write(str(os.getpid()))
         file.close()
-        print('Staring: ', self.status.value)
+        # print('Staring: ', self.status.value)
+        # 记录服务启动
+        service_status_logger.warning('Service is running')
         checkdb = Process(target=check_status, args=(self.status, self.address,
                                                      self.port, self.username,
                                                      self.passwd, self.target_db, self.signal),
