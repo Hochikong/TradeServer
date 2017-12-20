@@ -125,15 +125,6 @@ def return_user_info():
                 return jsonify({'user_id': user_id, 'full_history': query})
             else:
                 return jsonify({'status': 'Error', 'msg': 'No any operation history'})
-        elif jdict['query'] == 'trans_history':
-            query = collect_trans_history.find_one({'user_id': user_id})
-            if query:
-                query.pop('_id')
-                query['trans_history'] = query['history']
-                query.pop('history')
-                return jsonify(query)
-            else:
-                return jsonify({'status': 'Error', 'msg': 'No any transaction history'})
         elif jdict['query'] == 'profitstat':
             query = collect_profitstat.find_one({'user_id': user_id})
             if query:
@@ -153,8 +144,17 @@ def return_user_info():
             stat = real_time_profit_statistics(collect_traders, collect_positions)
             belong_to_user = [st for st in stat if user_id in list(st.values())]
             return jsonify(belong_to_user)
-        else:
-            return jsonify({'status': 'Error', 'msg': 'Wrong query'})
+        # elif jdict['query'] == 'trans_history':
+        #    query = collect_trans_history.find_one({'user_id': user_id})
+        #    if query:
+        #        query.pop('_id')
+        #        query['trans_history'] = query['history']
+        #        query.pop('history')
+        #        return jsonify(query)
+        #    else:
+        #        return jsonify({'status': 'Error', 'msg': 'No any transaction history'})
+        # else:
+        #     return jsonify({'status': 'Error', 'msg': 'Wrong query'})
 
 
 if __name__ == '__main__':
