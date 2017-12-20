@@ -29,6 +29,7 @@ if __name__ == "__main__":
                cfg.get(COLL_SECTION, 'traders_coll'),
                cfg.get(COLL_SECTION, 'profitstat_coll'),
                float(cfg.get(TRADE_SECTION, 'taxrate')),
-               float(cfg.get(TRADE_SECTION, 'feerate')))
+               float(cfg.get(TRADE_SECTION, 'feerate')),
+               cfg.get(TRADE_SECTION, 'matching'),)
     s.start()
 

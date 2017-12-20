@@ -7,10 +7,8 @@
 
 from multiprocessing import Process
 from multiprocessing.sharedctypes import Array
-from stockclib.omServ import clean_order_for_om, cost_cal_for_om, generate_positions, \
-    generate_positions_update, balance_manager, \
-    fetch_profitstat, fetch_others, fetch_signal, compare_when_matching
-from datetime import datetime
+from stockclib.omServ import clean_order_for_om, cost_cal_for_om, balance_manager, \
+    fetch_profitstat, fetch_others, fetch_signal, compare_when_matching, position_manager, matching_without_waiting
 from functools import reduce
 import os
 import tushare
@@ -74,8 +72,6 @@ def parallel_matching(per_order_with_params):
         position_manager(per_order, cursors['coll_positions'])
         # 修改用户余额
         balance_manager(cursors['coll_traders'], per_order)
-        # 写入trans_history
-        # transhistory_manager(cursors['coll_trans_history'], result)
         # 删除订单
         cursors['coll_orders'].delete_one({'order_id': order_id})
         # print('status: Done, code: %s, price: %s, ops: %s, user_id: %s' %
@@ -88,109 +84,42 @@ def parallel_matching(per_order_with_params):
                                       per_order['user_id']))
 
 
-def position_manager(per_order, positions):
+def parallel_matching_without_wait(per_order_with_params):
     """
-    仓位管理函数
-    :param per_order: 一张订单
-    :param positions: positions集合
+    与parallel_matching的区别在于此函数会调用忽略价格直接成交的撮合函数
+    :param per_order_with_params: 每一张订单和对应的游标和费率参数构成的元组:(order, feeR, taxR, cursors)
     :return:
     """
-    user_id = per_order['user_id']
-    if per_order['ops'] == 'bid':
-        data = generate_positions(per_order)
-        # 检查用户是否存在position表中
-        query_result = positions.find_one({'user_id': user_id})
-        # 如果已存在
-        if query_result:
-            user_position = query_result['position']
-            # 检查是否已经持有该股票
-            codes = [p['code'] for p in user_position]
-            # 增持
-            if per_order['code'] in codes:
-                # 计算增持时total等数据的新变化
-                code_index = codes.index(per_order['code'])
-                data_update = generate_positions_update(code_index, per_order, user_position)
-                # 把更新应用到原数据持仓信息里
-                for k in list(data_update.keys()):
-                    user_position[code_index][k] = data_update[k]
-                # 更新数据库
-                positions.update_one({'user_id': user_id}, {'$set': {'position': user_position}})
-                # return return_for_trans_history(user_id, per_order, data)
-            else:
-                # 非增持的情况
-                user_position.append(data)
-                # 更新用户持仓
-                positions.update_one({'user_id': user_id}, {'$set': {'position': user_position}})
-                # return return_for_trans_history(user_id, per_order, data)
-        else:
-            document = {'user_id': user_id, 'position': [data, ]}
-            positions.insert_one(document)
-            # 用于写入trans_history
-            # return return_for_trans_history(user_id, per_order, data)
-    if per_order['ops'] == 'offer':
-        query_result = positions.find_one({'user_id': user_id})
-        # 此处不再执行用户是否存在的查询，交给REST接口处理
-        position_data = query_result['position']
-        # 清除指定记录
-        d_index = [position_data.index(d) for d in position_data if d['code'] == per_order['code']][0]
-        position_data.pop(d_index)
-        # 重新写入数据库
-        positions.update_one({'user_id': user_id}, {'$set': {'position': position_data}})
-        # 更新trans_history
-        # return {'end': time.strftime("%Y-%m-%d", time.localtime()),
-        #         'code': per_order['code'],
-        #        'user_id': user_id,
-        #         'current_price': tushare.get_realtime_quotes(per_order['code'])['price'][0]}
+    per_order = per_order_with_params[0]
+    feeR = per_order_with_params[1]
+    taxR = per_order_with_params[2]
+    cursors = per_order_with_params[3]
 
+    compare_result = matching_without_waiting(per_order)
+    # print('Waiting for matching: | code: %s, price: %s, ops: %s' % (per_order['code'],
+    # compare_result, per_order['ops']))
+    # 准备写入full_history前的数据清理
+    per_order = clean_order_for_om(per_order, compare_result)
+    # 更新订单的费用和总值
+    per_order = cost_cal_for_om(per_order, feeR, taxR)
+    order_id = per_order['order_id']
+    # 写入操作记录
+    cursors['coll_full_history'].insert_one(per_order)
+    # 写入持仓
+    position_manager(per_order, cursors['coll_positions'])
+    # 修改用户余额
+    balance_manager(cursors['coll_traders'], per_order)
+    # 删除订单
+    cursors['coll_orders'].delete_one({'order_id': order_id})
+    # print('status: Done, code: %s, price: %s, ops: %s, user_id: %s' %
+    # (per_order['code'], compare_result, per_order['ops'], per_order['user_id']))
+    # 记录订单完成信息
+    matching_history_logger.info('status: Done, code: %s, price: %s, ops: %s, user_id: %s' %
+                                 (per_order['code'],
+                                  compare_result,
+                                  per_order['ops'],
+                                  per_order['user_id']))
 
-def transhistory_manager(trans_history, pm_return):
-    """
-    完整交易记录管理（非full_history）
-    :param trans_history: 交易记录表
-    :param pm_return: position_manager返回的数据
-    :return:
-    """
-    # 结算更新
-    # 卖出结算
-    if len(pm_return) == 4:
-        user_id = pm_return['user_id']
-        code = pm_return['code']
-        query_result = trans_history.find_one({'user_id': user_id})
-        history = query_result['history']
-        # 买入时写入的不含end的数据
-        data = [d for d in history if 'end' not in list(d.keys()) and code in list(d.values())][0]
-        data_index = history.index(data)
-        # 计算损益
-        the_return = round((float(pm_return['current_price'])-float(data['avgprice']))*int(data['amount'])
-                           -float(data['cost']), 2)
-        return_rate = round((the_return/float(data['total'])), 2)
-        # 计算日期
-        str_now_1 = pm_return['end'].split('-')
-        str_ago_2 = data['start'].split('-')
-        str_to_int_now = [int(ele) for ele in str_now_1]
-        str_to_int_ago = [int(ele) for ele in str_ago_2]
-        now = datetime(str_to_int_now[0], str_to_int_now[1], str_to_int_now[2])
-        ago = datetime(str_to_int_ago[0], str_to_int_ago[1], str_to_int_ago[2])
-        delta = (now-ago).days
-        # 补充数据
-        data['end'] = pm_return['end']
-        data['the_return'] = str(the_return)
-        data['rateofR'] = str(return_rate)
-        data['during'] = str(delta)
-        history[data_index] = data
-        # 写入数据库
-        trans_history.update_one({'user_id': user_id}, {'$set': {'history': history}})
-    # 买入结算
-    if len(pm_return) == 2:
-        user_id = pm_return['user_id']
-        query_result = trans_history.find_one({'user_id': user_id})
-        # 如果用户已存在
-        if query_result:
-            history = query_result['history']
-            history.append(pm_return['history'][0])
-            trans_history.update_one({'user_id': user_id}, {'$set': {'history': history}})
-        else:
-            trans_history.insert_one(pm_return)
 
 # -----------------------------
 # 进程函数
@@ -211,18 +140,19 @@ def check_status(self_status, address, port, username, passwd, target_db, servic
 
 
 def matching(self_status, address, port, username, passwd, target_db, order,
-             full_history, positions, trans_history, traders, feeR, taxR):   # 还没考虑到撤单
+             full_history, positions, trans_history, traders, feeR, taxR, matching_mechanism):   # 还没考虑到撤单
     cursors = fetch_others(address, port, username, passwd, target_db,
                            order, full_history, positions, trans_history, traders)
     while True:
         if bytes.decode(self_status.value) == 'run':
             all_orders = list(cursors['coll_orders'].find())
             all_orders_with_params = [(order, feeR, taxR, cursors) for order in all_orders]
-            # st = time.time()
-            r = list(map(parallel_matching, all_orders_with_params))
-            # ed = time.time()
-            # print('Cost', ed-st)
-            time.sleep(6)
+            if matching_mechanism == 'no':
+                r = list(map(parallel_matching_without_wait, all_orders_with_params))
+            else:
+                # 默认均使用等待版撮合函数
+                r = list(map(parallel_matching, all_orders_with_params))
+            time.sleep(3)
         else:
             # 不处理撮合
             # print('status: stop')
@@ -305,7 +235,7 @@ def profit_statistics(self_status, address, port, username, passwd, target_db, t
 
 class Server(object):
     def __init__(self, address, port, username, passwd, target_db, order, full_history,
-                 positions, trans_history, signal, traders, profitstat, feeR, taxR):
+                 positions, trans_history, signal, traders, profitstat, feeR, taxR, matching_mechanism):
         self.status = Array('c', b'halt')
         self.address = address
         self.port = port
@@ -321,6 +251,7 @@ class Server(object):
         self.profitstat = profitstat
         self.feeR = feeR
         self.taxR = taxR
+        self.matching_mechanism = matching_mechanism
 
     def start(self):
         file = open('runtime/omserv_pid', 'w')
@@ -338,7 +269,7 @@ class Server(object):
                                                       self.passwd, self.target_db,
                                                       self.order, self.full_history,
                                                       self.positions, self.trans_history, self.traders,
-                                                      self.feeR, self.taxR,
+                                                      self.feeR, self.taxR, self.matching_mechanism,
                                                       ),
                                name='matchingserv')
         profitstatserv = Process(target=profit_statistics, args=(self.status, self.address,
@@ -346,12 +277,13 @@ class Server(object):
                                                                  self.passwd, self.target_db,
                                                                  self.traders, self.positions, self.profitstat),
                                  name='profitstatserv')
+        profitstatserv.start()
         checkdb.start()
         matchingserv.start()
-        profitstatserv.start()
+        profitstatserv.join()
         checkdb.join()
         matchingserv.join()
-        profitstatserv.join()
+
 
 
 

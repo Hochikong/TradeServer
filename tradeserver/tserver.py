@@ -6,7 +6,7 @@
 # @Software: PyCharm
 
 from tradeserver import app
-from flask import request, jsonify, abort
+from flask import request, jsonify, abort, render_template
 from configparser import ConfigParser
 from stockclib.omServ import json_to_dict, token_certify, check_orders, \
     mongo_auth_assistant, clean_order, real_time_profit_statistics
@@ -144,17 +144,22 @@ def return_user_info():
             stat = real_time_profit_statistics(collect_traders, collect_positions)
             belong_to_user = [st for st in stat if user_id in list(st.values())]
             return jsonify(belong_to_user)
-        # elif jdict['query'] == 'trans_history':
-        #    query = collect_trans_history.find_one({'user_id': user_id})
-        #    if query:
-        #        query.pop('_id')
-        #        query['trans_history'] = query['history']
-        #        query.pop('history')
-        #        return jsonify(query)
-        #    else:
-        #        return jsonify({'status': 'Error', 'msg': 'No any transaction history'})
-        # else:
-        #     return jsonify({'status': 'Error', 'msg': 'Wrong query'})
+        else:
+            return jsonify({'status': 'Error', 'msg': 'Wrong query'})
+
+
+# ---------------------------------------------
+# 异常状态处理
+
+
+@app.errorhandler(404)  # 处理404的问题
+def not_found(e):
+    return render_template("page_not_found.html")
+
+
+@app.errorhandler(405)  # 处理不允许的HTTP谓词
+def ban_method(e):
+    return render_template("you_cant_use_this_method.html")
 
 
 if __name__ == '__main__':
