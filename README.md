@@ -15,10 +15,11 @@ My trade server.
 1.撮合服务器将用日志记录服务状态和交易记录，均保存在runtime目录下  
 2.服务器不再管理用户每只股票从建仓到平仓的交易内容并统计收益，而是需要用户获取full_history自行处理   
 3.修复了多用户查询实时收益时混入非自己持仓股票的bug  
-4.订单撮合性能改进
+4.订单撮合性能改进  
+5.可以用maintainctl.py控制撮合服务的状态了
 
 ## Dependence
-StockClib 0.3
+StockClib >= 0.3
 
 ## Usage
 There are three tools you should use
