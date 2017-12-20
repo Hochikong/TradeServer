@@ -1,8 +1,16 @@
-TradeServer 0.2
+TradeServer 0.2.1
 =========
 My trade server.
 
+
 ## Change log
+- 0.2.1  
+1.修复收益、成本计算的错误bug  
+2.修复卖出部分股票时均价不变的错误  
+3.修复均价计算错误的bug  
+4.可以选择不同的撮合机制，config.ini的matching_mechanism若设为no，将不会等待真实股价符合撮合机制再撮合，而是直接成交，像雪球的模拟盈亏   
+
+
 - 0.2：  
 1.撮合服务器将用日志记录服务状态和交易记录，均保存在runtime目录下  
 2.服务器不再管理用户每只股票从建仓到平仓的交易内容并统计收益，而是需要用户获取full_history自行处理   
@@ -62,6 +70,8 @@ There are three tools you should use
    - Method: POST
    - Body: {"query":"full_history"}
    
-   query: Specify what return you want to get: positions / full_history / profitstat / user / real_time_profit
+   query: Specify what return you want to get: positions / full_history / profitstat(每6小时才会出一次结果) / user / real_time_profit
 
+## Tips
+REST API查询中，positions返回的totol是avgprice*amount,而real_time_profit的current_total才是实时市值
 
