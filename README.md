@@ -74,5 +74,8 @@ There are three tools you should use
    query: Specify what return you want to get: positions / full_history / profitstat(每6小时才会出一次结果) / user / real_time_profit
 
 ## Tips
-REST API查询中，positions返回的totol是avgprice*amount,而real_time_profit的current_total才是实时市值
+REST API查询中，positions返回的totol是avgprice*amount,而real_time_profit的current_total才是实时市值  
+
+在positions查询中返回的cost的内容是建仓至今佣金和税费的累加  
+
 
