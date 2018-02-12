@@ -93,7 +93,7 @@ def takeorder():
             return jsonify({'status': 'Done', 'msg': {'remain_orders': order_belong_to_user}})  # 返回剩余订单
 
 
-@app.route('/users', methods=['POST'])
+@app.route('/user', methods=['POST'])
 def return_user_info():
     """
     根据用户的请求返回指定的数据

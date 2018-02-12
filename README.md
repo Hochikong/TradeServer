@@ -35,7 +35,7 @@ There are three tools you should use
 ## RESTful API
 1. Create order: 
    - Header: trade_token
-   - URL: /orders
+   - URL: /order
    - Method: POST 
    - Body: {"code":"000725","name":"京东方A","ops":"offer","amount":"200","price":"5.4"}  
 
@@ -51,13 +51,13 @@ There are three tools you should use
 
 2. Check remain order:
    - Header: trade_token
-   - URL: /orders
+   - URL: /order
    - Method: GET
    - Body: None
    
 3. Cancel order:
    - Header: trade_token
-   - URL: /orders
+   - URL: /order
    - Method: POST
    - Body: {"ops":"cancel","order_id":"XRTlbCHcST"}
    
@@ -67,7 +67,7 @@ There are three tools you should use
    
 4. Query users information:
    - Header: trade_token
-   - URL: /users
+   - URL: /user
    - Method: POST
    - Body: {"query":"full_history"}
    
