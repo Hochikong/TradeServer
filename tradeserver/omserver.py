@@ -8,34 +8,14 @@
 from multiprocessing import Process
 from multiprocessing.sharedctypes import Array
 from stockclib.omServ import clean_order_for_om, cost_cal_for_om, balance_manager, \
-    fetch_profitstat, fetch_others, fetch_signal, compare_when_matching, position_manager, matching_without_waiting
+    fetch_profitstat, fetch_others, fetch_signal, compare_when_matching, position_manager, matching_without_waiting, \
+    generate_logger
 from functools import reduce
 import os
 import tushare
 import logging
 import time
 # import time
-
-# logging configuration
-formatter = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
-
-
-def generate_logger(name, log_file, level=logging.INFO):
-    """
-    通用的日志记录模块，用于不同功能的日志记录工作
-    :param name: logger名
-    :param log_file: 日志文件
-    :param level: 日志级别，默认INFO
-    :return: logger对象
-    """
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-
-    return logger
 
 
 # 用于记录服务运行状态
