@@ -22,4 +22,4 @@ db = mongo_auth_assistant(cfg.get(DB_SECTION, 'address'),
                           cfg.get(DB_SECTION, 'database'))[cfg.get(DB_SECTION, 'database')]
 
 if __name__ == "__main__":
-    db[cfg.get(DB_SECTION, 'ordermatch_service_coll')].insert_one({'status': 'run'})
+    db['ordermatch_service'].insert_one({'status': 'run'})
