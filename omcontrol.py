@@ -25,7 +25,7 @@ db = mongo_auth_assistant(cfg.get(DB_SECTION, 'address'),
                           cfg.get(DB_SECTION, 'passwd'),
                           cfg.get(DB_SECTION, 'database'))[cfg.get(DB_SECTION, 'database')]
 
-collection = cfg.get(COLL_SECTION,'ordermatch_service_coll')
+collection = cfg.get(COLL_SECTION, 'ordermatch_service_coll')
 all_open = db[cfg.get(COLL_SECTION, 'trading_days')].find_one()['open']
 
 service_status_logger = generate_logger('serv_status', 'runtime/omctrl.log', logging.WARNING)
