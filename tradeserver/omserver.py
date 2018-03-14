@@ -149,65 +149,80 @@ def profit_statistics(self_status, address, port, username, passwd, target_db, t
             # 持仓用户的计算方法：持仓股票现市值之和加余额除本金
             all_users = list(cursors['coll_traders'].find())
             all_positions = list(cursors['coll_positions'].find())
+
             # 无持仓用户计算方法： 余额与本金差值除本金
-            all_user_with_positions = [p['user_id'] for p in all_positions]  # ['user_id','user_id']
+            all_user_with_positions = [p['user_id'] for p in all_positions if len(p['position']) > 0]  # ['user_id','user_id']
             all_user_without_positions = [u for u in all_users if u['user_id'] not in all_user_with_positions]
-            for u in all_user_without_positions:
-                u_balance = float(u['balance'])
-                u_total = float(u['total'])
-                u_AllrateR = round((u_balance-u_total)/u_total, 3)
-                stats.append({'user_id': u['user_id'], 'stat': [{
-                    'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                    'balance': str(u_balance),
-                    'AllrateR': str(u_AllrateR)}]})
+
+            if len(all_user_without_positions) > 0:
+                for u in all_user_without_positions:
+                    u_balance = float(u['balance'])
+                    u_total = float(u['total'])
+                    u_AllrateR = round((u_balance - u_total) / u_total, 3)
+                    stats.append({'user_id': u['user_id'], 'stat': [{
+                        'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                        'balance': str(u_balance),
+                        'AllrateR': str(u_AllrateR)}]})
+            else:
+                pass
+
             # 计算持仓用户的收益
             # 提取余额与本金
-            all_user_total_balance = []   # [['total', 'balance'], ['total', 'balance']]
-            for user_id in all_user_with_positions:
-                for info in all_users:
-                    if user_id in list(info.values()):
-                        all_user_total_balance.append({'user_id': user_id, 'data': [info['total'], info['balance']]})
-            # 提取代码、用户id、均价和数量
-            all_code_avgprice_amount = []
-            for u in all_positions:
-                for p in u['position']:
-                    data = {'user_id': u['user_id'], 'caa': (p['code'], p['avgprice'], p['amount'])}
-                    all_code_avgprice_amount.append(data)
-            # 更新现价
-            for i in all_code_avgprice_amount:
-                code = i['caa'][0]
-                i['now_price'] = tushare.get_realtime_quotes(code)['price'][0]
-            # 计算现市值
-            for i in all_code_avgprice_amount:
-                now_total = int(i['caa'][2])*float(i['now_price'])
-                i['s_now_total'] = round(now_total, 2)
-            # 加上余额求差值
-            for user_id in all_user_with_positions:
-                user_id_total = [i['s_now_total'] for i in all_code_avgprice_amount if user_id in list(i.values())]
-                user_id_total = reduce(lambda x, y: x + y, user_id_total)
-                # 用户股票总市值加上余额
-                user_id_now_balance = [float(i['data'][1]) for i in all_user_total_balance if user_id in list(i.values())][0]
-                user_id_a_total = user_id_now_balance + user_id_total
-                # 本金
-                user_id_origin_total = [float(i['data'][0]) for i in all_user_total_balance
-                                        if user_id in list(i.values())][0]
-                # 算收益率
-                AllrateR = round((user_id_a_total-user_id_origin_total)/user_id_origin_total, 3)
-                stat = {'user_id': user_id, 'stat': [{'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                                                      'balance': str(user_id_now_balance),
-                                                      'AllrateR': str(AllrateR)}]}
-                stats.append(stat)
+            if len(all_user_with_positions) > 0:
+                all_user_total_balance = []  # [['total', 'balance'], ['total', 'balance']]
+                for user_id in all_user_with_positions:
+                    for info in all_users:
+                        if user_id in list(info.values()):
+                            all_user_total_balance.append(
+                                {'user_id': user_id, 'data': [info['total'], info['balance']]})
+                # 提取代码、用户id、均价和数量
+                all_code_avgprice_amount = []
+                for u in all_positions:
+                    for p in u['position']:
+                        data = {'user_id': u['user_id'], 'caa': (p['code'], p['avgprice'], p['amount'])}
+                        all_code_avgprice_amount.append(data)
+                # 更新现价
+                for i in all_code_avgprice_amount:
+                    code = i['caa'][0]
+                    i['now_price'] = tushare.get_realtime_quotes(code)['price'][0]
+                # 计算现市值
+                for i in all_code_avgprice_amount:
+                    now_total = int(i['caa'][2]) * float(i['now_price'])
+                    i['s_now_total'] = round(now_total, 2)
+                # 加上余额求差值
+                for user_id in all_user_with_positions:
+                    user_id_total = [i['s_now_total'] for i in all_code_avgprice_amount if user_id in list(i.values())]
+                    user_id_total = reduce(lambda x, y: x + y, user_id_total)
+                    # 用户股票总市值加上余额
+                    user_id_now_balance = \
+                        [float(i['data'][1]) for i in all_user_total_balance if user_id in list(i.values())][0]
+                    user_id_a_total = user_id_now_balance + user_id_total
+                    # 本金
+                    user_id_origin_total = [float(i['data'][0]) for i in all_user_total_balance
+                                            if user_id in list(i.values())][0]
+                    # 算收益率
+                    AllrateR = round((user_id_a_total - user_id_origin_total) / user_id_origin_total, 3)
+                    stat = {'user_id': user_id, 'stat': [{'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                                                          'balance': str(user_id_now_balance),
+                                                          'AllrateR': str(AllrateR)}]}
+                    stats.append(stat)
+            else:
+                pass
 
             # 写入数据库
-            for i in stats:
-                query = cursors['coll_profitstat'].find_one({'user_id': i['user_id']})
-                if query:
-                    old_stat = query['stat']
-                    old_stat.append(i['stat'][0])
-                    cursors['coll_profitstat'].update_one({'user_id': i['user_id']}, {'$set': {'stat': old_stat}})
-                # 无此用户记录时
-                else:
-                    cursors['coll_profitstat'].insert_one(i)
+            if len(stats) > 0:
+                for i in stats:
+                    query = cursors['coll_profitstat'].find_one({'user_id': i['user_id']})
+                    if query:
+                        old_stat = query['stat']
+                        old_stat.append(i['stat'][0])
+                        cursors['coll_profitstat'].update_one({'user_id': i['user_id']}, {'$set': {'stat': old_stat}})
+                    # 无此用户记录时
+                    else:
+                        cursors['coll_profitstat'].insert_one(i)
+            else:
+                pass
+
             time.sleep(21600)  # 每6小时统计一次
         else:
             time.sleep(1800)   # 每半小时再检查信号
