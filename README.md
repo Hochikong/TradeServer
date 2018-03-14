@@ -24,7 +24,7 @@ My trade server.
 5.可以用maintainctl.py控制撮合服务的状态了
 
 ## Dependency
-StockClib >= 0.3
+StockClib >= 0.3.2
 
 ## Usage
 There are three tools you should use
