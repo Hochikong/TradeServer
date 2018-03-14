@@ -6,7 +6,7 @@
 # @Software: PyCharm
 
 from tradeserver import app
-from flask import request, jsonify, abort, render_template
+from flask import request, jsonify, abort, render_template, session
 from configparser import ConfigParser
 from stockclib.omServ import json_to_dict, token_certify, check_orders, \
     mongo_auth_assistant, clean_order, real_time_profit_statistics
@@ -39,6 +39,7 @@ collect_profitstat = sysdatabase[cfg.get(COLL_SECTION, 'profitstat_coll')]
 
 # ---------------------------------
 # REST API for trader
+app.secret_key = 'AeuOSOD84:324/]DFA@3XX,DLdxcEWKKw#@cvccyazm'
 
 
 @app.route('/order', methods=['POST', 'GET'])
@@ -59,12 +60,15 @@ def takeorder():
             # 撤单逻辑
             if 'order_id' in list(jdict.keys()) and jdict['ops'] == 'cancel':
                 order_data = collect_orders.find_one({'order_id': jdict['order_id']})
-                order_after_clean = clean_order(order_data)
-                # 分别写入操作记录和删除被撤订单
-                collect_full_history.insert_one(order_after_clean)
-                delete_obj = collect_orders.delete_one({'order_id': jdict['order_id']})
-                if delete_obj.deleted_count > 0:
-                    return jsonify({'status': 'Done', 'msg': 'Order cancel'})
+                if order_data:
+                    order_after_clean = clean_order(order_data)
+                    # 分别写入操作记录和删除被撤订单
+                    collect_full_history.insert_one(order_after_clean)
+                    delete_obj = collect_orders.delete_one({'order_id': jdict['order_id']})
+                    if delete_obj.deleted_count > 0:
+                        return jsonify({'status': 'Done', 'msg': 'Order cancel'})
+                    else:
+                        return jsonify({'status': 'Error', 'msg': 'No such order'})
                 else:
                     return jsonify({'status': 'Error', 'msg': 'No such order'})
             # 买入或者卖出的撤单
@@ -147,6 +151,34 @@ def return_user_info():
         else:
             return jsonify({'status': 'Error', 'msg': 'Wrong query'})
 
+
+# ---------------------------------------------
+# REST for monitor
+
+@app.route('/', methods=['GET'])
+def print_login_page():
+    return render_template("login.html")
+
+
+@app.route('/validate', methods=['POST'])
+def check_trade_token():
+    jdict = json_to_dict(request.data)
+    all_user = list(collect_traders.find())
+    tokens = []
+    for u in all_user:
+        tokens.append(u['token'])
+
+    if jdict['token'] in tokens:
+        session['token'] = jdict['token']
+        return jsonify({'status': 'ok'})
+    else:
+        return jsonify({'status': 'error'})
+
+
+@app.route('/monitor', methods=['GET'])
+def print_monitor_page():
+    print(session['token'])
+    return render_template("monitor.html")
 
 # ---------------------------------------------
 # 异常状态处理
