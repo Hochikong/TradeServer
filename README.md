@@ -1,9 +1,14 @@
-TradeServer 0.2.1
+TradeServer 0.2.2
 =========
 My trade server.
 
 
 ## Change log
+- 0.2.2  
+1.修复了空仓查询收益报错的bug  
+2.修复了发出不存在的订单ID撤单请求，导致不正常返回的bug  
+3.增加了Web控制台，方便用户监控交易记录  
+
 - 0.2.1  
 1.修复收益、成本计算的错误bug  
 2.修复卖出部分股票时均价不变的错误  
@@ -18,7 +23,7 @@ My trade server.
 4.订单撮合性能改进  
 5.可以用maintainctl.py控制撮合服务的状态了
 
-## Dependence
+## Dependency
 StockClib >= 0.3
 
 ## Usage

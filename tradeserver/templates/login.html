@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>欢迎使用Monitor</title>
+    <link href="https://cdn.bootcss.com/bootstrap/3.0.1/css/bootstrap.css" rel="stylesheet">
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/bootstrap/3.0.1/js/bootstrap.js"></script>
+    <script src="https://cdn.bootcss.com/jquery-cookie/1.4.1/jquery.cookie.js"></script>
+    <style>
+        body{
+            background-color: #e8edf3;
+        }
+        #form_panel{
+            padding: 10px;
+            background-color: #e8edf3;
+        }
+        #token_scope{
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row clearfix">
+        <div class="col-md-12 column">
+            <div class="jumbotron" style="background-color: #e8edf3">
+                <h1>
+                    欢迎使用Monitor
+                </h1>
+                <p>
+                    通过此界面，您可以实时获取您的持仓、余额等交易信息，方便验证策略
+                </p>
+                <p>
+                    请先输入您的token以登陆
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row clearfix">
+        <div class="col-md-4 column">
+        </div>
+        <div class="col-md-4 column">
+            <div id="form_panel">
+                <input type="text" name="trade_token" id="token_scope" placeholder="Trade Token">
+                <br/>
+                <br/>
+                <button type="button" class="btn btn-primary btn-default btn-block" id="validate">Validate</button>
+            </div>
+        </div>
+        <div class="col-md-4 column">
+        </div>
+    </div>
+</div>
+
+<!-- 负责跳转和记录cookie -->
+<script>
+    jQuery(document).ready(function () {
+        jQuery("#validate").click(function () {
+            var token = jQuery("#token_scope").val();
+            if (token.length < 5){
+                alert('非法token！');
+            }
+            else{
+                jQuery.ajax({
+                    type:"POST", url: '/validate',
+                    data: JSON.stringify({"token":token}),
+                    contentType: 'application/json; charset=UTF-8',
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.status == 'ok'){
+                            // 设置token方便后面的页面查询数据
+                            jQuery.cookie('request_token', token);
+                            window.location.href='/monitor'
+                        }
+                        if (response.status == 'error'){
+                            alert("未知错误，请联系管理员");
+                            jQuery("#token_scope").val("").focus();
+                        }
+                    }
+                })
+            }
+        })
+    })
+</script>
+
+</body>
+</html>

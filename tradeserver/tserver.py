@@ -6,10 +6,10 @@
 # @Software: PyCharm
 
 from tradeserver import app
-from flask import request, jsonify, abort, render_template, session
+from flask import request, jsonify, render_template, session, Response
 from configparser import ConfigParser
 from stockclib.omServ import json_to_dict, token_certify, check_orders, \
-    mongo_auth_assistant, clean_order, real_time_profit_statistics
+    mongo_auth_assistant, clean_order, real_time_profit_statistics, generate_fhist_csv
 
 # --------------------------------------
 # Load config.ini and read configuration
@@ -177,8 +177,23 @@ def check_trade_token():
 
 @app.route('/monitor', methods=['GET'])
 def print_monitor_page():
-    print(session['token'])
     return render_template("monitor.html")
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    jdict = json_to_dict(request.data)
+    if jdict['msg'] == 'logout':
+        session.pop('username', None)
+        return jsonify({'msg': 'ok'})
+    else:
+        return jsonify({'msg': 'ok'})
+
+
+@app.route('/fhist.csv', methods=['GET'])
+def download():
+    token = session['token']
+    return Response(generate_fhist_csv(token, collect_traders, collect_full_history), mimetype='text/csv')
 
 # ---------------------------------------------
 # 异常状态处理

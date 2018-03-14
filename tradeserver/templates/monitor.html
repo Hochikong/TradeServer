@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor</title>
+    <link href="https://cdn.bootcss.com/bootstrap/3.0.1/css/bootstrap.css" rel="stylesheet">
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/bootstrap/3.0.1/js/bootstrap.js"></script>
+    <script src="https://cdn.bootcss.com/jquery-cookie/1.4.1/jquery.cookie.js"></script>
+    <style>
+        body{
+            background-color: #1B3B4D;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- 此层为导航栏 -->
+    <div class="row clearfix">
+        <div class="col-md-12 column">
+            <nav class="navbar navbar-default" role="navigation">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                        <span class="sr-only">Toggle navigation</span><span class="icon-bar"></span>
+                        <span class="icon-bar"></span><span class="icon-bar"></span></button> <a class="navbar-brand" href="#">统计汇总</a>
+                </div>
+
+                <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                    <ul class="nav navbar-nav">
+                        <li>
+                            <a href="http://q.10jqka.com.cn/" target="_blank">同花顺行情中心</a>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" id="logout">注销</a>
+                        </li>
+                    </ul>
+                </div>
+
+            </nav>
+        </div>
+    </div>
+
+    <!-- 此层为持仓统计 -->
+    <div class="row clearfix">
+        <div class="tabbable" id="tabs-257257">
+
+            <!-- tab头部 -->
+            <ul class="nav nav-tabs">
+                <li  class="active">
+                    <a href="#panel-446506" data-toggle="tab">持仓</a>
+                </li>
+                <li>
+                    <a href="#panel-711308" data-toggle="tab">订单</a>
+                </li>
+                <li>
+                    <a href="#panel-446504" data-toggle="tab">基本信息</a>
+                </li>
+                <li>
+                    <a href="#panel-446505" data-toggle="tab">操作记录</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- 第一个Tab -->
+                <div class="tab-pane active" id="panel-446506">
+                    <br/>
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">
+                                下面为用户的全部持仓信息
+                            </h3>
+                        </div>
+                        <div class="panel-body">
+                            <table class="table table-bordered table-hover table-condensed">
+                                <thead>
+                                <tr>
+                                    <th>
+                                        名称
+                                    </th>
+                                    <th>
+                                        代码
+                                    </th>
+                                    <th>
+                                        数量
+                                    </th>
+                                    <th>
+                                        平均持仓成本
+                                    </th>
+                                    <th>
+                                        总值
+                                    </th>
+                                    <th>
+                                        收益率
+                                    </th>
+                                    <th>
+                                        盈亏
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody id="positions_data">
+                                <!-- js补充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 第二个Tab -->
+                <div class="tab-pane" id="panel-711308">
+                    <br/>
+                    <div class="panel panel-danger">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">
+                                下面是此刻的全部订单
+                            </h3>
+                        </div>
+                        <div class="panel-body">
+                            <table class="table table-bordered table-hover table-condensed">
+                                <thead>
+                                <tr>
+                                    <th>
+                                        股票名称
+                                    </th>
+                                    <th>
+                                        代码
+                                    </th>
+                                    <th>
+                                        方向
+                                    </th>
+                                    <th>
+                                        价格
+                                    </th>
+                                    <th>
+                                        数量
+                                    </th>
+                                    <th>
+                                        撤单选择
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody id="order_body">
+                                <!-- js补充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="panel-footer">
+                            <div class="row clearfix">
+                                <div class="col-md-4 column">
+                                </div>
+                                <div class="col-md-6 column">
+                                </div>
+                                <div class="col-md-2 column">
+                                    <button type="button" class="btn btn-danger btn-default" id="cancel_order">撤销所有勾选订单</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="panel-446504">
+                    <!-- 此层为收益等统计汇总  -->
+                    <div class="row clearfix">
+                        <br/>
+                        <div class="col-md-8 column">
+                            <div class="panel panel-warning">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title">
+                                        用户信息
+                                    </h3>
+                                </div>
+                                <div class="panel-body">
+                                    <p>用户ID： <span id="user_id"></span></p><br/>
+                                    <p>持有资金： <span id="money">0</span></p><br/>
+                                    <p>资金余额： <span id="balance">0</span></p><br/>
+                                    <p>总收益率： <span id="total_rate">0</span></p><br/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 column">
+                            <div class="panel panel-info">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title">
+                                        下载详细记录
+                                    </h3>
+                                </div>
+                                <div class="panel-body">
+                                    <p>
+                                        此处下载详细操作记录与持仓记录
+                                    </p>
+                                    <p>
+                                        <a class="btn btn-primary btn-large" id="download">下载</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane" id="panel-446505">
+                    <br/>
+                    <div class="panel panel-success">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">
+                                下面为用户的总收益率与余额统计
+                            </h3>
+                        </div>
+                        <div class="panel-body">
+                            <table class="table table-bordered table-hover table-condensed">
+                                <thead>
+                                <tr>
+                                    <th>
+                                        总收益率
+                                    </th>
+                                    <th>
+                                        余额
+                                    </th>
+                                    <th>
+                                        日期
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody id="profitstat">
+                                <!-- js补充 -->
+                                </tbody>
+                            </table>
+                            <div id="page"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- 此js代码用于更新持仓与基本信息 -->
+<script>
+    //---------------------------------------------
+    // 辅助函数
+    // string.format()实现
+    String.prototype.format = function() {
+        a = this;
+        for (k in arguments) {
+            a = a.replace("{" + k + "}", arguments[k])
+        }
+        return a
+    };
+
+    function toPercent(point){
+        var str=Number(point*100).toFixed(1);
+        str+="%";
+        return str;
+    }
+
+    //---------------------------------------------
+    //主函数
+
+    jQuery(document).ready(function () {
+        // 更新基本信息的主循环
+        fetchProfitstat();
+        setInterval("fetchBasicData()", 5000);
+        setInterval("fetchPositionData()", 5000);
+        setInterval("fetchOrderData()", 5000);
+
+    });
+
+    //---------------------------------------------
+    //主函数辅助函数
+
+    function fetchBasicData() {
+        // 通过request token发送请求查询信息
+        var token = jQuery.cookie('request_token');
+        jQuery.ajax({
+            type:"POST", url: '/user',
+            data: JSON.stringify({"query": "user"}),
+            contentType: 'application/json; charset=UTF-8',
+            dataType: 'json',
+            headers: {
+                "trade_token": token
+            },
+            success: function (response) {
+                updateBasicInfo(response);
+            }
+        })
+    }
+
+    function updateBasicInfo(data) {
+        // 从ajax获取数据并更新基本信息
+        var user_id = data.user_id;
+        var allmoney = parseFloat(data.total);
+        var balance = parseFloat(data.balance);
+        jQuery("#user_id").text(user_id);
+        jQuery("#money").text(allmoney);
+        jQuery("#balance").text(balance);
+    }
+
+    function fetchPositionData() {
+        // 清空原有列表
+        jQuery("#positions_data").empty();
+
+        // 通过request token发送请求查询信息
+        var token = jQuery.cookie('request_token');
+        jQuery.ajax({
+            type:"POST", url: '/user',
+            data: JSON.stringify({"query": "real_time_profit"}),
+            contentType: 'application/json; charset=UTF-8',
+            dataType: 'json',
+            headers: {
+                "trade_token": token
+            },
+            success: function (response) {
+                updatePositions(response);
+            }
+        })
+    }
+
+    function updatePositions(data) {
+        var allrateR = parseFloat(data[0].stat[0].AllrateR);
+        jQuery("#total_rate").text(allrateR);
+
+        var positions = data[0]['stocks_rateR'];
+        if (positions){
+            updatePositionsList(positions);
+        }
+
+    }
+
+    function judege_class(single) {
+        if (parseFloat(single.rateR) > 0){
+            return 'success';
+        }
+        else{
+            return 'danger';
+        }
+    }
+
+    function updatePositionsList(position_data) {
+        var template = '<tr class="{0}"><td>{1}</td>' +
+            '<td>{2}</td><td>{3}</td>' +
+            '<td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td></tr>';
+
+        position_data.forEach(function (single) {
+            var color = judege_class(single);
+            var percent = toPercent(single.rateR);
+            jQuery("#positions_data").append(template.format(color, single.name, single.code, single.amount,
+                single.avgprice, single.current_total, percent, single.return));
+        })
+    }
+
+    //此代码用于订单展示与撤单功能
+    //---------------------------------------------
+
+    function fetchOrderData() {
+        // 清空原有列表
+        jQuery("#order_body").empty();
+
+        // 通过request token发送请求查询信息
+        var token = jQuery.cookie('request_token');
+        jQuery.ajax({
+            type:"GET", url: '/order',
+            dataType: 'json',
+            headers: {
+                "trade_token": token
+            },
+            success: function (response) {
+                updateRemainOrder(response);
+            }
+        })
+    }
+
+    function updateRemainOrder(remain_orders) {
+        var orders = remain_orders['msg']['remain_orders'];
+        var template1 = '<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td>' +
+            '<td>{4}</td><td><input type="checkbox" value="{5}" name="checkboxx"/></td></tr>';
+
+        orders.forEach(function (single1) {
+            jQuery("#order_body").append(template1.format(single1.name, single1.code,
+                single1.ops, single1.price, single1.amount, single1.order_id))
+        })
+    }
+    
+    function fetchProfitstat() {
+        // 获取收益统计
+        var token = jQuery.cookie('request_token');
+        jQuery.ajax({
+            type:"POST", url: '/user',
+            data: JSON.stringify({"query": "profitstat"}),
+            contentType: 'application/json; charset=UTF-8',
+            dataType: 'json',
+            headers: {
+                "trade_token": token
+            },
+            success: function (response) {
+                updateProfitstat(response);
+            }
+        })
+    }
+
+    function updateProfitstat(stat) {
+        var stats = stat['stat'];
+        var template2 = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>';
+
+        stats.forEach(function (st) {
+            jQuery("#profitstat").append(template2.format(toPercent(parseFloat(st.AllrateR)), st.balance, st.date))
+        })
+
+    }
+
+    //撤单事件代码
+    //---------------------------------------------
+    jQuery(document).ready(function () {
+        jQuery("#cancel_order").click(function () {
+            fetchIDAndCancel();
+        })
+    });
+
+    function sendCancel(order_id) {
+        // 发出撤单请求
+        var token = jQuery.cookie('request_token');
+        jQuery.ajax({
+            type:"POST", url: '/order',
+            data: JSON.stringify({"ops":"cancel","order_id":order_id}),
+            contentType: 'application/json; charset=UTF-8',
+            dataType: 'json',
+            headers: {
+                "trade_token": token
+            },
+            success: function (response) {
+                location.reload();
+            }
+        })
+    }
+    
+    function fetchIDAndCancel() {
+        var obj = document.getElementsByName("checkboxx");
+        var order_ids = [];
+        for(var k in obj){
+            if(obj[k].checked)
+                order_ids.push(obj[k].value);
+        }
+        order_ids.forEach(function (id) {
+            sendCancel(id);
+            alert("所选订单已撤销")
+        })
+    }
+    
+    jQuery(document).ready(function () {
+        jQuery("#logout").click(function () {
+            jQuery.cookie('request_token', null);
+
+            jQuery.ajax({
+                type:"POST", url: '/logout',
+                data: JSON.stringify({'msg': 'logout'}),
+                contentType: 'application/json; charset=UTF-8',
+                success: function (response) {
+                    alert("已退出");
+                    window.location.href='/';
+                }
+            })
+        })
+    })
+
+    jQuery(document).ready(function () {
+        jQuery("#download").click(function () {
+            window.location.href='/fhist.csv';
+        })
+    })
+
+</script>
+</body>
+</html>
