@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.bootcss.com/jquery-mobile/1.4.5/jquery.mobile.min.css" rel="stylesheet">
+    <script src="https://cdn.bootcss.com/jquery/1.8.0/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/jquery-mobile/1.4.5/jquery.mobile.min.js"></script>
+    <script src="https://cdn.bootcss.com/jquery-cookie/1.4.1/jquery.cookie.js"></script>
+    <style>
+        #pageone{
+            background-color: #e8edf3;
+        }
+    </style>
+</head>
+<body>
+<div data-role="page" id="pageone">
+
+    <div data-role="main" class="ui-content">
+        <h1>欢迎使用Monitor</h1>
+        <p>
+            通过此界面，您可以实时获取您的持仓、余额等交易信息，方便验证策略
+        </p>
+        <p>
+            请先输入您的token以登陆
+        </p>
+        <br/>
+        <input type="text" name="trade_token" id="token_scope" placeholder="Trade Token">
+        <br/>
+        <br/>
+        <button type="button" class="ui-btn ui-btn-a" id="validate">Validate</button>
+    </div>
+</div>
+
+<script>
+    jQuery(document).ready(function () {
+        jQuery("#validate").click(function () {
+            var token = jQuery("#token_scope").val();
+            if (token.length < 5){
+                alert('非法token！');
+            }
+            else{
+                jQuery.ajax({
+                    type:"POST", url: '/validate',
+                    data: JSON.stringify({"token":token}),
+                    contentType: 'application/json; charset=UTF-8',
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.status == 'ok'){
+                            // 设置token方便后面的页面查询数据
+                            jQuery.cookie('request_token', token);
+                            window.location.href='/mmo'
+                        }
+                        if (response.status == 'error'){
+                            alert("未知错误，请联系管理员");
+                            jQuery("#token_scope").val("").focus();
+                        }
+                    }
+                })
+            }
+        })
+    })
+</script>
+</body>
+</html>

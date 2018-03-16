@@ -10,6 +10,7 @@ from flask import request, jsonify, render_template, session, Response
 from configparser import ConfigParser
 from stockclib.omServ import json_to_dict, token_certify, check_orders, \
     mongo_auth_assistant, clean_order, real_time_profit_statistics, generate_fhist_csv
+from pyecharts import Line
 
 # --------------------------------------
 # Load config.ini and read configuration
@@ -156,11 +157,24 @@ def return_user_info():
 # REST for monitor
 
 @app.route('/', methods=['GET'])
+# PC版页面
 def print_login_page():
     return render_template("login.html")
 
 
+@app.route('/mlogin', methods=['GET'])
+# 移动版页面
+def show_mlogin():
+    return render_template("mlogin.html")
+
+
+@app.route('/mmo', methods=['GET'])
+def show_mmo():
+    return render_template("/mmonitor.html")
+
+
 @app.route('/validate', methods=['POST'])
+# 登陆验证
 def check_trade_token():
     jdict = json_to_dict(request.data)
     all_user = list(collect_traders.find())
@@ -176,11 +190,16 @@ def check_trade_token():
 
 
 @app.route('/monitor', methods=['GET'])
+# 渲染monitor
 def print_monitor_page():
-    return render_template("monitor.html")
+    token = session['token']
+    all_user = list(collect_traders.find())
+    user_id = [ur['user_id'] for ur in all_user if ur['token'] == token][0]
+    return render_template("monitor.html", myechart=profitstat_chart(user_id))
 
 
 @app.route('/logout', methods=['POST'])
+# 注销验证
 def logout():
     jdict = json_to_dict(request.data)
     if jdict['msg'] == 'logout':
@@ -191,6 +210,7 @@ def logout():
 
 
 @app.route('/fhist.csv', methods=['GET'])
+# 返回csv文件留
 def download():
     token = session['token']
     return Response(generate_fhist_csv(token, collect_traders, collect_full_history), mimetype='text/csv')
@@ -207,6 +227,24 @@ def not_found(e):
 @app.errorhandler(405)  # 处理不允许的HTTP谓词
 def ban_method(e):
     return render_template("you_cant_use_this_method.html")
+
+
+# ---------------------------------------------
+# 图表展示函数，未来需要迁入omServ
+
+
+def profitstat_chart(user_id):
+    query = list(collect_profitstat.find())
+    user_profithist = [data for data in query if data['user_id'] == user_id][0]['stat']
+
+    # 创建图表
+    line = Line("您的收益变化")
+    attrs = [i['date'] for i in user_profithist]
+    x_dates = [i.split(' ')[0] for i in attrs]
+    y_profit = [i['AllrateR'] for i in user_profithist]
+    line.add("总收益", x_dates, y_profit, is_label_show=True, is_datazoom_show=True,
+             mark_point=['average'], is_more_utils=True)
+    return line.render_embed()
 
 
 if __name__ == '__main__':

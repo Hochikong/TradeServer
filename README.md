@@ -1,10 +1,14 @@
-TradeServer 0.2.2
+TradeServer 0.2.3
 =========
 My trade server.
 
 
 ## Change log
-- 0.2.2  
+- 0.2.3  （2018-03-17）  
+1.为宽屏版页面提供了基于pyecharts的收益曲线展示功能  
+2.提供了移动端适配的页面，但不支持收益曲线展示
+
+- 0.2.2 （2018-03-15）  
 1.修复了空仓查询收益报错的bug  
 2.修复了发出不存在的订单ID撤单请求，导致不正常返回的bug  
 3.增加了Web控制台，方便用户监控交易记录  
@@ -24,7 +28,8 @@ My trade server.
 5.可以用maintainctl.py控制撮合服务的状态了
 
 ## Dependency
-StockClib >= 0.3.2
+StockClib >= 0.3.2  
+pyecharts
 
 ## Usage
 There are three tools you should use

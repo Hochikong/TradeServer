@@ -47,6 +47,9 @@
                 <br/>
                 <br/>
                 <button type="button" class="btn btn-primary btn-default btn-block" id="validate">Validate</button>
+                <br/>
+                <br/>
+                <button type="button" class="btn btn-xs btn-warning" id="mlogin">前往移动端页面</button>
             </div>
         </div>
         <div class="col-md-4 column">
@@ -82,6 +85,12 @@
                 })
             }
         })
+    });
+
+    jQuery(document).ready(function () {
+       jQuery("#mlogin").click(function () {
+           window.location.href='/mlogin'
+       })
     })
 </script>
 
