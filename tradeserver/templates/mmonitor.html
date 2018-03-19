@@ -72,12 +72,12 @@
                 <table data-role="table" data-mode="columntoggle" class="ui-responsive ui-shadow" id="myTable1">
                     <thead>
                     <tr>
-                        <th data-priority="1">股票名称</th>
-                        <th data-priority="2">代码</th>
-                        <th data-priority="3">方向</th>
-                        <th data-priority="5">价格</th>
-                        <th data-priority="6">数量</th>
-                        <th data-priority="4">撤单选择</th>
+                        <th>股票名称</th>
+                        <th>代码</th>
+                        <th>方向</th>
+                        <th>价格</th>
+                        <th>数量</th>
+                        <th>撤单选择</th>
                     </tr>
                     </thead>
                     <tbody id="order_body">
@@ -85,7 +85,11 @@
                     </tbody>
                 </table>
             </div>
-            <div class="ui-block-a" style="border:1px solid transparent;"><button type="button" class="btn btn-danger btn-default" id="cancel_order">撤销所有勾选订单</button></div>
+            <div class="ui-block-a" style="border:1px solid transparent;">
+                <button type="button" class="btn btn-danger btn-default" id="cancel_order">撤销所有勾选订单</button>
+                <button type="button" class="btn btn-danger btn-default" id="select_all">全选</button>
+            </div>
+            <br/>
             <div class="ui-block-a" style="border:1px solid transparent;">
                 <p>
                     此处下载详细操作记录与持仓记录:(UTF8,CSV)
@@ -128,7 +132,7 @@
     <div data-role="footer">
         <div data-role="navbar">
             <ul>
-                <li><a href="#pageone">上一页</a></li>
+                <li><a href="#pagetwo">上一页</a></li>
                 <li><a href="#pagefourth">下一页</a></li>
             </ul>
         </div>
@@ -397,6 +401,14 @@
     jQuery(document).ready(function () {
         jQuery("#download").click(function () {
             window.location.href='/fhist.csv';
+        })
+    })
+
+    //全选所有订单
+    //---------------------------------------------
+    jQuery(document).ready(function () {
+        jQuery("#select_all").click(function () {
+            jQuery(":checkbox").prop("checked", true)
         })
     })
 
