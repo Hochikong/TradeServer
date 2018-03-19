@@ -119,6 +119,29 @@
                     <div class="panel panel-danger">
                         <div class="panel-heading">
                             <h3 class="panel-title">
+                                手动下单（慎用此API, 仅在关键时刻人工干预下使用，创建失败将不会提示）
+                            </h3>
+                        </div>
+                        <div class="panel-body">
+                            <input type="text" id="submit_code" placeholder="股票代码">
+                            <input type="text" id="submit_name" placeholder="股票名称">
+                            <label>
+                                <select id="submit_ops">
+                                    <option value ="bid">买</option>
+                                    <option value ="offer">卖</option>
+                                </select>
+                            </label>
+                            <input type="text" id="submit_amount" placeholder="数量（只能为100的整数倍）">
+                            <input type="text" id="submit_price" placeholder="价格（浮点数）">
+                            <br/>
+                            <br/>
+                            <button type="button" class="btn btn-primary btn-warning" id="send_order">发送订单</button>
+                        </div>
+                    </div>
+                    <br/>
+                    <div class="panel panel-danger">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">
                                 下面是此刻的全部订单
                             </h3>
                         </div>
@@ -154,6 +177,7 @@
                         <div class="panel-footer">
                             <div class="row clearfix">
                                 <div class="col-md-4 column">
+                                    <button type="button" class="btn btn-danger btn-default" id="select_all">全选</button>
                                 </div>
                                 <div class="col-md-6 column">
                                 </div>
@@ -484,6 +508,55 @@
     jQuery(document).ready(function () {
         jQuery("#download").click(function () {
             window.location.href='/fhist.csv';
+        })
+    })
+
+    //全选所有订单
+    //---------------------------------------------
+    jQuery(document).ready(function () {
+        jQuery("#select_all").click(function () {
+            jQuery(":checkbox").prop("checked", true)
+        })
+    })
+
+    //手动下单
+    //---------------------------------------------
+    function clearSubmits() {
+        jQuery("#submit_code").val("");
+        jQuery("#submit_name").val("");
+        jQuery("#submit_ops").val("bid");
+        jQuery("#submit_amount").val("");
+        jQuery("#submit_price").val("")
+    }
+
+
+    jQuery(document).ready(function () {
+        jQuery("#send_order").click(function () {
+            var code = jQuery("#submit_code").val();
+            var name = jQuery("#submit_name").val();
+            var ops = jQuery("#submit_ops").val();
+            var amount = jQuery("#submit_amount").val();
+            var price = jQuery("#submit_price").val();
+
+            if (amount % 100 != 0){
+                alert("非法数量");
+                jQuery("#submit_amount").val("");
+            }
+            else{
+                var data = {'code': code, 'name': name,
+                    'ops': ops, 'amount': amount, 'price': price};
+                var token = jQuery.cookie('request_token');
+                jQuery.ajax({
+                    type:"POST", url: '/order',
+                    data: JSON.stringify(data),
+                    contentType: 'application/json; charset=UTF-8',
+                    dataType: 'json',
+                    headers: {
+                        "trade_token": token
+                    }
+                });
+                clearSubmits()
+            }
         })
     })
 
