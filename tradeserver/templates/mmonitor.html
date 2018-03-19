@@ -360,9 +360,6 @@
             dataType: 'json',
             headers: {
                 "trade_token": token
-            },
-            success: function (response) {
-                location.reload();
             }
         })
     }
@@ -376,8 +373,9 @@
         }
         order_ids.forEach(function (id) {
             sendCancel(id);
-            alert("所选订单已撤销")
-        })
+        });
+        alert("所选订单已撤销");
+        location.reload()
     }
 
     jQuery(document).ready(function () {
